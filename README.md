@@ -2,6 +2,7 @@
 
 [![Build Status](https://github.com/jannik4/tower-serve-static/workflows/CI/badge.svg)](https://github.com/jannik4/tower-serve-static/actions)
 [![dependency status](https://deps.rs/repo/github/jannik4/tower-serve-static/status.svg)](https://deps.rs/repo/github/jannik4/tower-serve-static)
+[![codecov](https://codecov.io/gh/jannik4/tower-serve-static/branch/main/graph/badge.svg?token=Ah6sXPLFan)](https://codecov.io/gh/jannik4/tower-serve-static)
 [![Lines Of Code](https://tokei.rs/b1/github/jannik4/tower-serve-static?category=code)](https://github.com/jannik4/tower-serve-static)
 
 Tower file services using [include_dir](https://crates.io/crates/include_dir/) and [include_bytes](https://doc.rust-lang.org/std/macro.include_bytes.html) to embed assets into the binary.

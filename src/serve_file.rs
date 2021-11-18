@@ -174,7 +174,7 @@ mod tests {
     #[tokio::test]
     async fn with_mime() {
         let svc = ServeFile::new(include_file_with_mime!(
-            "./README.md",
+            "/README.md",
             mime::APPLICATION_OCTET_STREAM
         ));
 

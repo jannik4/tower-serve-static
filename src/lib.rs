@@ -7,7 +7,7 @@
 //!
 //! // File is located relative to `CARGO_MANIFEST_DIR` (the directory containing the manifest of your package).
 //! // This will embed and serve the `README.md` file.
-//! let service = ServeFile::new(include_file!("./README.md"));
+//! let service = ServeFile::new(include_file!("/README.md"));
 //!
 //! # async {
 //! // Run our service using `hyper`

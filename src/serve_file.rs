@@ -145,7 +145,7 @@ mod tests {
 
     #[tokio::test]
     async fn basic() {
-        let svc = ServeFile::new(include_file!("./README.md"));
+        let svc = ServeFile::new(include_file!("/README.md"));
 
         let res = svc.oneshot(Request::new(Body::empty())).await.unwrap();
 
@@ -159,7 +159,7 @@ mod tests {
 
     #[tokio::test]
     async fn with_custom_chunk_size() {
-        let svc = ServeFile::new(include_file!("./README.md")).with_buf_chunk_size(1024 * 32);
+        let svc = ServeFile::new(include_file!("/README.md")).with_buf_chunk_size(1024 * 32);
 
         let res = svc.oneshot(Request::new(Body::empty())).await.unwrap();
 
@@ -192,7 +192,7 @@ mod tests {
     //
     // #[tokio::test]
     // async fn returns_404_if_file_doesnt_exist() {
-    //     let svc = ServeFile::new(include_file!("./this-doesnt-exist.md"));
+    //     let svc = ServeFile::new(include_file!("/this-doesnt-exist.md"));
     //
     //     let res = svc.oneshot(Request::new(Body::empty())).await.unwrap();
     //

@@ -1,65 +1,80 @@
-//! Service that serves a file.
-
 use super::{AsyncReadBody, DEFAULT_CAPACITY};
 use bytes::Bytes;
-use futures_util::ready;
 use http::{header, HeaderValue, Response};
 use http_body::{combinators::BoxBody, Body};
-use mime::Mime;
 use std::{
     future::Future,
     io,
-    path::{Path, PathBuf},
     pin::Pin,
     task::{Context, Poll},
 };
-use tokio::fs::File;
 use tower_service::Service;
+
+/// A file.
+#[derive(Clone, Debug)]
+pub struct File {
+    bytes: &'static [u8],
+    mime: HeaderValue,
+}
+
+impl File {
+    /// Create a new [`File`].
+    pub fn new(bytes: &'static [u8], mime: HeaderValue) -> Self {
+        File { bytes, mime }
+    }
+}
+
+/// Create a new [`File`].
+///
+/// The `Content-Type` will be guessed from the file extension.
+#[macro_export]
+macro_rules! include_file {
+    ($file:expr) => {
+        $crate::File::new(
+            ::std::include_bytes!(::std::concat!(::std::env!("CARGO_MANIFEST_DIR"), $file)),
+            $crate::private::mime_guess::from_path(&$file)
+                .first_raw()
+                .map(|mime| $crate::private::http::HeaderValue::from_static(mime))
+                .unwrap_or_else(|| {
+                    $crate::private::http::HeaderValue::from_str(
+                        $crate::private::mime::APPLICATION_OCTET_STREAM.as_ref(),
+                    )
+                    .unwrap()
+                }),
+        )
+    };
+}
+
+/// Create a new [`File`] with a specific mime type.
+///
+/// # Panics
+///
+/// Will panic if the mime type isn't a valid [header value].
+///
+/// [header value]: https://docs.rs/http/latest/http/header/struct.HeaderValue.html
+#[macro_export]
+macro_rules! include_file_with_mime {
+    ($file:expr, $mime:expr) => {
+        $crate::File {
+            bytes: ::std::include_bytes!(::std::concat!(::std::env!("CARGO_MANIFEST_DIR"), $file)),
+            mime: $crate::private::http::HeaderValue::from_str($mime.as_ref())
+                .expect("mime isn't a valid header value"),
+        }
+    };
+}
 
 /// Service that serves a file.
 #[derive(Clone, Debug)]
 pub struct ServeFile {
-    path: PathBuf,
-    mime: HeaderValue,
+    file: File,
     buf_chunk_size: usize,
 }
 
 impl ServeFile {
     /// Create a new [`ServeFile`].
-    ///
-    /// The `Content-Type` will be guessed from the file extension.
-    pub fn new<P: AsRef<Path>>(path: P) -> Self {
-        let guess = mime_guess::from_path(&path);
-        let mime = guess
-            .first_raw()
-            .map(|mime| HeaderValue::from_static(mime))
-            .unwrap_or_else(|| {
-                HeaderValue::from_str(mime::APPLICATION_OCTET_STREAM.as_ref()).unwrap()
-            });
-
-        let path = path.as_ref().to_owned();
-
+    pub fn new(file: File) -> Self {
         Self {
-            path,
-            mime,
-            buf_chunk_size: DEFAULT_CAPACITY,
-        }
-    }
-
-    /// Create a new [`ServeFile`] with a specific mime type.
-    ///
-    /// # Panics
-    ///
-    /// Will panic if the mime type isn't a valid [header value].
-    ///
-    /// [header value]: https://docs.rs/http/latest/http/header/struct.HeaderValue.html
-    pub fn new_with_mime<P: AsRef<Path>>(path: P, mime: &Mime) -> Self {
-        let mime = HeaderValue::from_str(mime.as_ref()).expect("mime isn't a valid header value");
-        let path = path.as_ref().to_owned();
-
-        Self {
-            path,
-            mime,
+            file,
             buf_chunk_size: DEFAULT_CAPACITY,
         }
     }
@@ -84,11 +99,8 @@ impl<R> Service<R> for ServeFile {
     }
 
     fn call(&mut self, _req: R) -> Self::Future {
-        let open_file_future = Box::pin(File::open(self.path.clone()));
-
         ResponseFuture {
-            open_file_future,
-            mime: Some(self.mime.clone()),
+            file: Some(self.file.clone()),
             buf_chunk_size: self.buf_chunk_size,
         }
     }
@@ -96,33 +108,22 @@ impl<R> Service<R> for ServeFile {
 
 /// Response future of [`ServeFile`].
 pub struct ResponseFuture {
-    open_file_future: Pin<Box<dyn Future<Output = io::Result<File>> + Send + Sync + 'static>>,
-    mime: Option<HeaderValue>,
+    file: Option<File>,
     buf_chunk_size: usize,
 }
 
 impl Future for ResponseFuture {
     type Output = io::Result<Response<ResponseBody>>;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let result = ready!(Pin::new(&mut self.open_file_future).poll(cx));
-
-        let file = match result {
-            Ok(file) => file,
-            Err(err) => {
-                return Poll::Ready(
-                    super::response_from_io_error(err).map(|res| res.map(ResponseBody)),
-                )
-            }
-        };
+    fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let file = self.file.take().unwrap();
 
         let chunk_size = self.buf_chunk_size;
-        let body = AsyncReadBody::with_capacity(file, chunk_size).boxed();
+        let body = AsyncReadBody::with_capacity(file.bytes, chunk_size).boxed();
         let body = ResponseBody(body);
 
         let mut res = Response::new(body);
-        res.headers_mut()
-            .insert(header::CONTENT_TYPE, self.mime.take().unwrap());
+        res.headers_mut().insert(header::CONTENT_TYPE, file.mime);
 
         Poll::Ready(Ok(res))
     }
@@ -137,14 +138,14 @@ opaque_body! {
 mod tests {
     #[allow(unused_imports)]
     use super::*;
-    use http::{Request, StatusCode};
+    use http::Request;
     use http_body::Body as _;
     use hyper::Body;
     use tower::ServiceExt;
 
     #[tokio::test]
     async fn basic() {
-        let svc = ServeFile::new("./README.md");
+        let svc = ServeFile::new(include_file!("./README.md"));
 
         let res = svc.oneshot(Request::new(Body::empty())).await.unwrap();
 
@@ -158,7 +159,7 @@ mod tests {
 
     #[tokio::test]
     async fn with_custom_chunk_size() {
-        let svc = ServeFile::new("./README.md").with_buf_chunk_size(1024 * 32);
+        let svc = ServeFile::new(include_file!("./README.md")).with_buf_chunk_size(1024 * 32);
 
         let res = svc.oneshot(Request::new(Body::empty())).await.unwrap();
 
@@ -171,12 +172,31 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn returns_404_if_file_doesnt_exist() {
-        let svc = ServeFile::new("./this-doesnt-exist.md");
+    async fn with_mime() {
+        let svc = ServeFile::new(include_file_with_mime!(
+            "./README.md",
+            mime::APPLICATION_OCTET_STREAM
+        ));
 
         let res = svc.oneshot(Request::new(Body::empty())).await.unwrap();
 
-        assert_eq!(res.status(), StatusCode::NOT_FOUND);
-        assert!(res.headers().get(header::CONTENT_TYPE).is_none());
+        assert_eq!(res.headers()["content-type"], "application/octet-stream");
+
+        let body = res.into_body().data().await.unwrap().unwrap();
+        let body = String::from_utf8(body.to_vec()).unwrap();
+
+        assert!(body.starts_with("# Tower Serve Static"));
     }
+
+    // 404 is not possible with include_file!
+    //
+    // #[tokio::test]
+    // async fn returns_404_if_file_doesnt_exist() {
+    //     let svc = ServeFile::new(include_file!("./this-doesnt-exist.md"));
+    //
+    //     let res = svc.oneshot(Request::new(Body::empty())).await.unwrap();
+    //
+    //     assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    //     assert!(res.headers().get(header::CONTENT_TYPE).is_none());
+    // }
 }

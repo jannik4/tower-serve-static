@@ -17,6 +17,8 @@ tokio = { version = "1", default_features = false, features = ["fs"] }
 tokio-util = { version = "0.6", default_features = false, features = ["io"] }
 percent-encoding = "2.1.0"
 
+include_dir = "0.7.0"
+
 [dev-dependencies]
 hyper = { version = "0.14", features = ["full"] }
 tokio = { version = "1", features = ["full"] }

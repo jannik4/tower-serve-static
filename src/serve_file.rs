@@ -1,7 +1,6 @@
 //! Service that serves a file.
 
-use super::AsyncReadBody;
-use crate::services::fs::DEFAULT_CAPACITY;
+use super::{AsyncReadBody, DEFAULT_CAPACITY};
 use bytes::Bytes;
 use futures_util::ready;
 use http::{header, HeaderValue, Response};
@@ -145,7 +144,7 @@ mod tests {
 
     #[tokio::test]
     async fn basic() {
-        let svc = ServeFile::new("../README.md");
+        let svc = ServeFile::new("./README.md");
 
         let res = svc.oneshot(Request::new(Body::empty())).await.unwrap();
 
@@ -154,12 +153,12 @@ mod tests {
         let body = res.into_body().data().await.unwrap().unwrap();
         let body = String::from_utf8(body.to_vec()).unwrap();
 
-        assert!(body.starts_with("# Tower HTTP"));
+        assert!(body.starts_with("# Tower Serve Static"));
     }
 
     #[tokio::test]
     async fn with_custom_chunk_size() {
-        let svc = ServeFile::new("../README.md").with_buf_chunk_size(1024 * 32);
+        let svc = ServeFile::new("./README.md").with_buf_chunk_size(1024 * 32);
 
         let res = svc.oneshot(Request::new(Body::empty())).await.unwrap();
 
@@ -168,12 +167,12 @@ mod tests {
         let body = res.into_body().data().await.unwrap().unwrap();
         let body = String::from_utf8(body.to_vec()).unwrap();
 
-        assert!(body.starts_with("# Tower HTTP"));
+        assert!(body.starts_with("# Tower Serve Static"));
     }
 
     #[tokio::test]
     async fn returns_404_if_file_doesnt_exist() {
-        let svc = ServeFile::new("../this-doesnt-exist.md");
+        let svc = ServeFile::new("./this-doesnt-exist.md");
 
         let res = svc.oneshot(Request::new(Body::empty())).await.unwrap();
 

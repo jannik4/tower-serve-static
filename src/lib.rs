@@ -1,5 +1,11 @@
 //! File system related services.
 
+#[macro_use]
+mod macros;
+
+mod serve_dir;
+mod serve_file;
+
 use bytes::Bytes;
 use http::{HeaderMap, Response, StatusCode};
 use http_body::{combinators::BoxBody, Body, Empty};
@@ -13,9 +19,6 @@ use tokio::io::AsyncRead;
 
 use futures_util::Stream;
 use tokio_util::io::ReaderStream;
-
-mod serve_dir;
-mod serve_file;
 
 // default capacity 64KiB
 const DEFAULT_CAPACITY: usize = 65536;

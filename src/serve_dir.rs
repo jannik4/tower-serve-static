@@ -1,5 +1,4 @@
-use super::AsyncReadBody;
-use crate::services::fs::DEFAULT_CAPACITY;
+use super::{AsyncReadBody, DEFAULT_CAPACITY};
 use bytes::Bytes;
 use futures_util::ready;
 use http::{header, HeaderValue, Request, Response, StatusCode, Uri};
@@ -29,7 +28,7 @@ use tower_service::Service;
 /// # Example
 ///
 /// ```
-/// use tower_http::services::ServeDir;
+/// use tower_serve_static::ServeDir;
 ///
 /// // This will serve files in the "assets" directory and
 /// // its subdirectories
@@ -52,7 +51,7 @@ use tower_service::Service;
 /// [`and_then`](tower::ServiceBuilder::and_then) to change the response:
 ///
 /// ```
-/// use tower_http::services::fs::{ServeDir, ServeDirResponseBody};
+/// use tower_serve_static::{ServeDir, ServeDirResponseBody};
 /// use tower::ServiceBuilder;
 /// use http::{StatusCode, Response};
 /// use http_body::{Body as _, Full};
@@ -319,7 +318,7 @@ mod tests {
 
     #[tokio::test]
     async fn basic() {
-        let svc = ServeDir::new("..");
+        let svc = ServeDir::new(".");
 
         let req = Request::builder()
             .uri("/README.md")
@@ -332,13 +331,13 @@ mod tests {
 
         let body = body_into_text(res.into_body()).await;
 
-        let contents = std::fs::read_to_string("../README.md").unwrap();
+        let contents = std::fs::read_to_string("./README.md").unwrap();
         assert_eq!(body, contents);
     }
 
     #[tokio::test]
     async fn with_custom_chunk_size() {
-        let svc = ServeDir::new("..").with_buf_chunk_size(1024 * 32);
+        let svc = ServeDir::new(".").with_buf_chunk_size(1024 * 32);
 
         let req = Request::builder()
             .uri("/README.md")
@@ -351,32 +350,32 @@ mod tests {
 
         let body = body_into_text(res.into_body()).await;
 
-        let contents = std::fs::read_to_string("../README.md").unwrap();
+        let contents = std::fs::read_to_string("./README.md").unwrap();
         assert_eq!(body, contents);
     }
 
     #[tokio::test]
     async fn access_to_sub_dirs() {
-        let svc = ServeDir::new("..");
+        let svc = ServeDir::new(".");
 
         let req = Request::builder()
-            .uri("/tower-http/Cargo.toml")
+            .uri("/src/lib.rs")
             .body(Body::empty())
             .unwrap();
         let res = svc.oneshot(req).await.unwrap();
 
         assert_eq!(res.status(), StatusCode::OK);
-        assert_eq!(res.headers()["content-type"], "text/x-toml");
+        assert_eq!(res.headers()["content-type"], "text/x-rust");
 
         let body = body_into_text(res.into_body()).await;
 
-        let contents = std::fs::read_to_string("Cargo.toml").unwrap();
+        let contents = std::fs::read_to_string("src/lib.rs").unwrap();
         assert_eq!(body, contents);
     }
 
     #[tokio::test]
     async fn not_found() {
-        let svc = ServeDir::new("..");
+        let svc = ServeDir::new(".");
 
         let req = Request::builder()
             .uri("/not-found")

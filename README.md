@@ -1,5 +1,8 @@
 # Tower Serve Static
 
+[![Build Status](https://github.com/jannik4/tower-serve-static/workflows/CI/badge.svg)](https://github.com/jannik4/tower-serve-static/actions)
+[![Lines Of Code](https://tokei.rs/b1/github/jannik4/tower-serve-static?category=code)](https://github.com/jannik4/tower-serve-static)
+
 Tower file services using [include_dir](https://crates.io/crates/include_dir/) and [include_bytes](https://doc.rust-lang.org/std/macro.include_bytes.html) to embed assets into the binary.
 
 ## Credits

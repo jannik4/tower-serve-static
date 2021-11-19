@@ -22,7 +22,8 @@
 //! # Serve Static Directory
 //!
 //! ```
-//! use tower_serve_static::{ServeDir, Dir, include_dir};
+//! use tower_serve_static::{ServeDir};
+//! use include_dir::{Dir, include_dir};
 //!
 //! // Use `$CARGO_MANIFEST_DIR` to make path relative to your package.
 //! // This will embed and serve files in the `src` directory and its subdirectories.
@@ -69,8 +70,7 @@ const DEFAULT_CAPACITY: usize = 65536;
 
 pub use self::{
     serve_dir::{
-        include_dir, Dir, ResponseBody as ServeDirResponseBody,
-        ResponseFuture as ServeDirResponseFuture, ServeDir,
+        ResponseBody as ServeDirResponseBody, ResponseFuture as ServeDirResponseFuture, ServeDir,
     },
     serve_file::{
         File, ResponseBody as ServeFileResponseBody, ResponseFuture as ServeFileResponseFuture,

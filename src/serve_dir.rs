@@ -2,7 +2,7 @@ use super::{AsyncReadBody, DEFAULT_CAPACITY};
 use bytes::Bytes;
 use http::{header, HeaderValue, Request, Response, StatusCode, Uri};
 use http_body::{combinators::BoxBody, Body, Empty};
-use include_dir::File;
+use include_dir::{Dir, File};
 use percent_encoding::percent_decode;
 use std::{
     future::Future,
@@ -12,8 +12,6 @@ use std::{
     task::{Context, Poll},
 };
 use tower_service::Service;
-
-pub use include_dir::{include_dir, Dir};
 
 /// Service that serves files from a given directory and all its sub directories.
 ///
@@ -230,6 +228,7 @@ mod tests {
     use http::{Request, StatusCode};
     use http_body::Body as HttpBody;
     use hyper::Body;
+    use include_dir::include_dir;
     use tower::ServiceExt;
 
     static ASSETS_DIR: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/tests/assets");

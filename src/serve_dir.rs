@@ -100,7 +100,9 @@ impl<ReqBody> Service<Request<ReqBody>> for ServeDir {
                     inner: Some(Inner::Redirect(location)),
                 };
             }
-        } else if is_dir(&self.dir, &full_path) {
+        } else if is_dir(&self.dir, &full_path)
+            || req.uri().path() == "/" && self.dir.contains("index.html")
+        {
             if self.append_index_html_on_directories {
                 full_path.push("index.html");
             } else {

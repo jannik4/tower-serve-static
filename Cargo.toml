@@ -1,7 +1,11 @@
 [package]
 name = "tower-serve-static"
+description = "Tower service that serves static files."
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+repository = "https://github.com/jannik4/tower-serve-static"
+homepage = "https://github.com/jannik4/tower-serve-static"
 
 [dependencies]
 bytes = "1"

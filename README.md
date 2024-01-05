@@ -9,13 +9,6 @@ Tower file services using [include_dir](https://crates.io/crates/include_dir/) a
 
 ## Usage
 
-### Cargo.toml
-
-```toml
-tower-serve-static = { git = "https://github.com/jannik4/tower-serve-static", version = "0.1.0" }
-include_dir = "0.7.0"
-```
-
 ### Serve Static File
 
 ```rust

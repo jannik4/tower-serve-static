@@ -135,6 +135,9 @@ impl<ReqBody> Service<Request<ReqBody>> for ServeDir {
 }
 
 fn is_dir(dir: &Dir<'static>, path: &Path) -> bool {
+    if path.as_os_str() == std::ffi::OsStr::new("") {
+        return true;
+    }
     dir.get_dir(path).is_some()
 }
 
@@ -336,6 +339,25 @@ mod tests {
 
         let body = body_into_text(res.into_body()).await;
         assert!(body.is_empty());
+    }
+
+    #[tokio::test]
+    async fn root_path_with_index() {
+        let svc = ServeDir::new(&ASSETS_DIR);
+
+        let req = Request::builder()
+            .uri("/")
+            .body(http_body_util::Empty::<Bytes>::new())
+            .unwrap();
+        let res = svc.oneshot(req).await.unwrap();
+
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.headers()["content-type"], "text/html");
+
+        let body = body_into_text(res.into_body()).await;
+
+        let contents = std::fs::read_to_string("./tests/assets/index.html").unwrap();
+        assert_eq!(body, contents);
     }
 
     async fn body_into_text<B>(body: B) -> String

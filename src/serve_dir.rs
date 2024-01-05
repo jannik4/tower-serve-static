@@ -94,7 +94,7 @@ impl<ReqBody> Service<Request<ReqBody>> for ServeDir {
         }
 
         if !req.uri().path().ends_with('/') {
-            if is_dir(&self.dir, &full_path) {
+            if is_dir(self.dir, &full_path) {
                 let location =
                     HeaderValue::from_str(&append_slash_on_path(req.uri().clone()).to_string())
                         .unwrap();
@@ -102,7 +102,7 @@ impl<ReqBody> Service<Request<ReqBody>> for ServeDir {
                     inner: Some(Inner::Redirect(location)),
                 };
             }
-        } else if is_dir(&self.dir, &full_path) {
+        } else if is_dir(self.dir, &full_path) {
             if self.append_index_html_on_directories {
                 full_path.push("index.html");
             } else {
@@ -123,7 +123,7 @@ impl<ReqBody> Service<Request<ReqBody>> for ServeDir {
         let guess = mime_guess::from_path(&full_path);
         let mime = guess
             .first_raw()
-            .map(|mime| HeaderValue::from_static(mime))
+            .map(HeaderValue::from_static)
             .unwrap_or_else(|| {
                 HeaderValue::from_str(mime::APPLICATION_OCTET_STREAM.as_ref()).unwrap()
             });

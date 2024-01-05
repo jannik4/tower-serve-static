@@ -1,8 +1,10 @@
 use super::{AsyncReadBody, DEFAULT_CAPACITY};
 use bytes::Bytes;
 use http::{header, HeaderValue, Response};
-use http_body::{combinators::BoxBody, Body};
+use http_body::Frame;
+use http_body_util::{combinators::BoxBody, BodyExt};
 use std::{
+    convert::Infallible,
     future::Future,
     io,
     pin::Pin,
@@ -90,7 +92,7 @@ impl ServeFile {
 
 impl<R> Service<R> for ServeFile {
     type Response = Response<ResponseBody>;
-    type Error = io::Error;
+    type Error = Infallible;
     type Future = ResponseFuture;
 
     #[inline]
@@ -113,7 +115,7 @@ pub struct ResponseFuture {
 }
 
 impl Future for ResponseFuture {
-    type Output = io::Result<Response<ResponseBody>>;
+    type Output = Result<Response<ResponseBody>, Infallible>;
 
     fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
         let file = self.file.take().unwrap();
@@ -139,20 +141,21 @@ mod tests {
     #[allow(unused_imports)]
     use super::*;
     use http::Request;
-    use http_body::Body as _;
-    use hyper::Body;
     use tower::ServiceExt;
 
     #[tokio::test]
     async fn basic() {
         let svc = ServeFile::new(include_file!("/README.md"));
 
-        let res = svc.oneshot(Request::new(Body::empty())).await.unwrap();
+        let res = svc
+            .oneshot(Request::new(http_body_util::Empty::<Bytes>::new()))
+            .await
+            .unwrap();
 
         assert_eq!(res.headers()["content-type"], "text/markdown");
 
-        let body = res.into_body().data().await.unwrap().unwrap();
-        let body = String::from_utf8(body.to_vec()).unwrap();
+        let body = res.into_body().collect().await.unwrap();
+        let body = String::from_utf8(body.to_bytes().to_vec()).unwrap();
 
         assert!(body.starts_with("# Tower Serve Static"));
     }
@@ -161,12 +164,15 @@ mod tests {
     async fn with_custom_chunk_size() {
         let svc = ServeFile::new(include_file!("/README.md")).with_buf_chunk_size(1024 * 32);
 
-        let res = svc.oneshot(Request::new(Body::empty())).await.unwrap();
+        let res = svc
+            .oneshot(Request::new(http_body_util::Empty::<Bytes>::new()))
+            .await
+            .unwrap();
 
         assert_eq!(res.headers()["content-type"], "text/markdown");
 
-        let body = res.into_body().data().await.unwrap().unwrap();
-        let body = String::from_utf8(body.to_vec()).unwrap();
+        let body = res.into_body().collect().await.unwrap();
+        let body = String::from_utf8(body.to_bytes().to_vec()).unwrap();
 
         assert!(body.starts_with("# Tower Serve Static"));
     }
@@ -178,12 +184,15 @@ mod tests {
             mime::APPLICATION_OCTET_STREAM
         ));
 
-        let res = svc.oneshot(Request::new(Body::empty())).await.unwrap();
+        let res = svc
+            .oneshot(Request::new(http_body_util::Empty::<Bytes>::new()))
+            .await
+            .unwrap();
 
         assert_eq!(res.headers()["content-type"], "application/octet-stream");
 
-        let body = res.into_body().data().await.unwrap().unwrap();
-        let body = String::from_utf8(body.to_vec()).unwrap();
+        let body = res.into_body().collect().await.unwrap();
+        let body = String::from_utf8(body.to_bytes().to_vec()).unwrap();
 
         assert!(body.starts_with("# Tower Serve Static"));
     }
@@ -193,10 +202,13 @@ mod tests {
     // #[tokio::test]
     // async fn returns_404_if_file_doesnt_exist() {
     //     let svc = ServeFile::new(include_file!("/this-doesnt-exist.md"));
-    //
-    //     let res = svc.oneshot(Request::new(Body::empty())).await.unwrap();
-    //
-    //     assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    //     let res = svc
+    //         .oneshot(Request::new(http_body_util::Empty::<Bytes>::new()))
+    //         .await
+    //         .unwrap();
+
+    //     assert_eq!(res.status(), http::StatusCode::NOT_FOUND);
     //     assert!(res.headers().get(header::CONTENT_TYPE).is_none());
     // }
 }

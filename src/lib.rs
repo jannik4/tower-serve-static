@@ -9,13 +9,14 @@
 //! // This will embed and serve the `README.md` file.
 //! let service = ServeFile::new(include_file!("/README.md"));
 //!
+//! // Run our service using `axum`
+//! let app = axum::Router::new().nest_service("/", service);
+//!
 //! # async {
-//! // Run our service using `hyper`
-//! let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 3000));
-//! hyper::Server::bind(&addr)
-//!     .serve(tower::make::Shared::new(service))
-//!     .await
-//!     .expect("server error");
+//! // run our app with axum, listening locally on port 3000
+//! let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await?;
+//! axum::serve(listener, app).await?;
+//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! # };
 //! ```
 //!
@@ -30,13 +31,14 @@
 //! static ASSETS_DIR: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/src");
 //! let service = ServeDir::new(&ASSETS_DIR);
 //!
+//! // Run our service using `axum`
+//! let app = axum::Router::new().nest_service("/", service);
+//!
+//! // run our app with axum, listening locally on port 3000
 //! # async {
-//! // Run our service using `hyper`
-//! let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 3000));
-//! hyper::Server::bind(&addr)
-//!     .serve(tower::make::Shared::new(service))
-//!     .await
-//!     .expect("server error");
+//! let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await?;
+//! axum::serve(listener, app).await?;
+//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! # };
 //! ```
 
@@ -52,8 +54,7 @@ pub mod private {
 }
 
 use bytes::Bytes;
-use http::HeaderMap;
-use http_body::Body;
+use http_body::{Body, Frame};
 use pin_project::pin_project;
 use std::{
     io,
@@ -107,17 +108,14 @@ where
     type Data = Bytes;
     type Error = io::Error;
 
-    fn poll_data(
+    fn poll_frame(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Data, Self::Error>>> {
-        self.project().reader.poll_next(cx)
-    }
-
-    fn poll_trailers(
-        self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
-    ) -> Poll<Result<Option<HeaderMap>, Self::Error>> {
-        Poll::Ready(Ok(None))
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
+        self.project().reader.poll_next(cx).map(|res| match res {
+            Some(Ok(buf)) => Some(Ok(Frame::data(buf))),
+            Some(Err(err)) => Some(Err(err)),
+            None => None,
+        })
     }
 }

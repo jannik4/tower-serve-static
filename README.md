@@ -25,12 +25,12 @@ use tower_serve_static::{ServeFile, include_file};
 // This will embed and serve the `README.md` file.
 let service = ServeFile::new(include_file!("/README.md"));
 
-// Run our service using `hyper`
-let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 3000));
-hyper::Server::bind(&addr)
-    .serve(tower::make::Shared::new(service))
-    .await
-    .expect("server error");
+// Run our service using `axum`
+let app = axum::Router::new().nest_service("/", service);
+
+// run our app with axum, listening locally on port 3000
+let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await?;
+axum::serve(listener, app).await?;
 ```
 
 ### Serve Static Directory
@@ -44,12 +44,12 @@ use include_dir::{Dir, include_dir};
 static ASSETS_DIR: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/src");
 let service = ServeDir::new(&ASSETS_DIR);
 
-// Run our service using `hyper`
-let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 3000));
-hyper::Server::bind(&addr)
-    .serve(tower::make::Shared::new(service))
-    .await
-    .expect("server error");
+// Run our service using `axum`
+let app = axum::Router::new().nest_service("/", service);
+
+// run our app with axum, listening locally on port 3000
+let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await?;
+axum::serve(listener, app).await?;
 ```
 
 ## Credits

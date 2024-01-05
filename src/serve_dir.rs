@@ -1,10 +1,12 @@
 use super::{AsyncReadBody, DEFAULT_CAPACITY};
 use bytes::Bytes;
 use http::{header, HeaderValue, Request, Response, StatusCode, Uri};
-use http_body::{combinators::BoxBody, Body, Empty};
+use http_body::Frame;
+use http_body_util::{combinators::BoxBody, BodyExt, Empty};
 use include_dir::{Dir, File};
 use percent_encoding::percent_decode;
 use std::{
+    convert::Infallible,
     future::Future,
     io,
     path::{Path, PathBuf},
@@ -60,7 +62,7 @@ impl ServeDir {
 
 impl<ReqBody> Service<Request<ReqBody>> for ServeDir {
     type Response = Response<ResponseBody>;
-    type Error = io::Error;
+    type Error = Infallible;
     type Future = ResponseFuture;
 
     #[inline]
@@ -177,7 +179,7 @@ pub struct ResponseFuture {
 }
 
 impl Future for ResponseFuture {
-    type Output = io::Result<Response<ResponseBody>>;
+    type Output = Result<Response<ResponseBody>, Infallible>;
 
     fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
         match self.inner.take().unwrap() {
@@ -227,7 +229,6 @@ mod tests {
     use super::*;
     use http::{Request, StatusCode};
     use http_body::Body as HttpBody;
-    use hyper::Body;
     use include_dir::include_dir;
     use tower::ServiceExt;
 
@@ -239,7 +240,7 @@ mod tests {
 
         let req = Request::builder()
             .uri("/text.txt")
-            .body(Body::empty())
+            .body(http_body_util::Empty::<Bytes>::new())
             .unwrap();
         let res = svc.oneshot(req).await.unwrap();
 
@@ -258,7 +259,7 @@ mod tests {
 
         let req = Request::builder()
             .uri("/text.txt")
-            .body(Body::empty())
+            .body(http_body_util::Empty::<Bytes>::new())
             .unwrap();
         let res = svc.oneshot(req).await.unwrap();
 
@@ -277,7 +278,7 @@ mod tests {
 
         let req = Request::builder()
             .uri("/subfolder/data.json")
-            .body(Body::empty())
+            .body(http_body_util::Empty::<Bytes>::new())
             .unwrap();
         let res = svc.oneshot(req).await.unwrap();
 
@@ -296,7 +297,7 @@ mod tests {
 
         let req = Request::builder()
             .uri("/not-found")
-            .body(Body::empty())
+            .body(http_body_util::Empty::<Bytes>::new())
             .unwrap();
         let res = svc.oneshot(req).await.unwrap();
 
@@ -313,7 +314,7 @@ mod tests {
 
         let req = Request::builder()
             .uri("/subfolder")
-            .body(Body::empty())
+            .body(http_body_util::Empty::<Bytes>::new())
             .unwrap();
         let res = svc.oneshot(req).await.unwrap();
 
@@ -327,7 +328,7 @@ mod tests {
     async fn empty_directory_without_index() {
         let svc = ServeDir::new(&ASSETS_DIR).append_index_html_on_directories(false);
 
-        let req = Request::new(Body::empty());
+        let req = Request::new(http_body_util::Empty::<Bytes>::new());
         let res = svc.oneshot(req).await.unwrap();
 
         assert_eq!(res.status(), StatusCode::NOT_FOUND);
@@ -342,7 +343,7 @@ mod tests {
         B: HttpBody<Data = bytes::Bytes> + Unpin,
         B::Error: std::fmt::Debug,
     {
-        let bytes = hyper::body::to_bytes(body).await.unwrap();
+        let bytes = body.collect().await.unwrap().to_bytes(); //.await.unwrap();
         String::from_utf8(bytes.to_vec()).unwrap()
     }
 
@@ -353,7 +354,7 @@ mod tests {
         let req = Request::builder()
             // percent encoding present of 你好世界.txt
             .uri("/%E4%BD%A0%E5%A5%BD%E4%B8%96%E7%95%8C.txt")
-            .body(Body::empty())
+            .body(http_body_util::Empty::<Bytes>::new())
             .unwrap();
         let res = svc.oneshot(req).await.unwrap();
 
@@ -368,7 +369,7 @@ mod tests {
         let req = Request::builder()
             // percent encoding present of "filename with space.txt"
             .uri("/filename%20with%20space.txt")
-            .body(Body::empty())
+            .body(http_body_util::Empty::<Bytes>::new())
             .unwrap();
         let res = svc.oneshot(req).await.unwrap();
 

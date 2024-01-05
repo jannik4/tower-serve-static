@@ -6,20 +6,21 @@ edition = "2021"
 [dependencies]
 bytes = "1"
 futures-util = { version = "0.3", default_features = false, features = [] }
-http = "0.2"
-http-body = "0.4.1"
+http = "1"
+http-body = "1"
+http-body-util = "0.1"
 pin-project = "1"
 tower-service = "0.3"
 
 mime = "0.3"
 mime_guess = "2"
 tokio = { version = "1", default_features = false, features = ["fs"] }
-tokio-util = { version = "0.6", default_features = false, features = ["io"] }
+tokio-util = { version = "0.7", default_features = false, features = ["io"] }
 percent-encoding = "2.1.0"
 
 include_dir = "0.7.0"
 
 [dev-dependencies]
-hyper = { version = "0.14", features = ["full"] }
+axum = { version = "0.7.3" }
 tokio = { version = "1", features = ["full"] }
 tower = { version = "0.4.10", features = ["buffer", "util", "retry", "make"] }

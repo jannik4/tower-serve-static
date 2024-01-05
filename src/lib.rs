@@ -112,9 +112,10 @@ where
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
-        self.project()
-            .reader
-            .poll_next(cx)
-            .map(|x| x.map(|y| y.map(|z| Frame::data(z))))
+        self.project().reader.poll_next(cx).map(|res| match res {
+            Some(Ok(buf)) => Some(Ok(Frame::data(buf))),
+            Some(Err(err)) => Some(Err(err)),
+            None => None,
+        })
     }
 }

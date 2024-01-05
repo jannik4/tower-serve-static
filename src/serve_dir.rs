@@ -135,6 +135,9 @@ impl<ReqBody> Service<Request<ReqBody>> for ServeDir {
 }
 
 fn is_dir(dir: &Dir<'static>, path: &Path) -> bool {
+    if path.as_os_str() == std::ffi::OsStr::new("") {
+        return true;
+    }
     dir.get_dir(path).is_some()
 }
 

@@ -1,5 +1,7 @@
 # Tower Serve Static
 
+[![crates.io](https://img.shields.io/crates/v/tower-serve-static.svg)](https://crates.io/crates/tower-serve-static)
+[![docs.rs](https://img.shields.io/badge/docs-latest-blue.svg)](https://docs.rs/tower-serve-static)
 [![Build Status](https://github.com/jannik4/tower-serve-static/workflows/CI/badge.svg)](https://github.com/jannik4/tower-serve-static/actions)
 [![dependency status](https://deps.rs/repo/github/jannik4/tower-serve-static/status.svg)](https://deps.rs/repo/github/jannik4/tower-serve-static)
 [![codecov](https://codecov.io/gh/jannik4/tower-serve-static/branch/main/graph/badge.svg?token=Ah6sXPLFan)](https://codecov.io/gh/jannik4/tower-serve-static)

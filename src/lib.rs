@@ -119,3 +119,35 @@ where
         })
     }
 }
+
+#[cfg(feature = "metadata")]
+fn unmodified_since_request_condition<T>(file: &include_dir::File, req: &http::Request<T>) -> bool {
+    use http::{header, Method};
+    use httpdate::HttpDate;
+
+    let Some(metadata) = file.metadata() else {
+        return false;
+    };
+
+    // When used in combination with If-None-Match, it is ignored, unless the server doesn't support If-None-Match.
+    if req.headers().contains_key(header::IF_NONE_MATCH) {
+        return false;
+    }
+
+    // If-Modified-Since can only be used with a GET or HEAD.
+    match req.method() {
+        &Method::GET | &Method::HEAD => (),
+        _ => return false,
+    }
+
+    let Some(since) = req
+        .headers()
+        .get(header::IF_MODIFIED_SINCE)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.parse::<HttpDate>().ok())
+    else {
+        return false;
+    };
+
+    metadata.modified() <= since.into()
+}

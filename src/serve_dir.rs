@@ -120,6 +120,13 @@ impl<ReqBody> Service<Request<ReqBody>> for ServeDir {
             };
         };
 
+        #[cfg(feature = "metadata")]
+        if super::unmodified_since_request_condition(file, &req) {
+            return ResponseFuture {
+                inner: Some(Inner::NotModified),
+            };
+        }
+
         let guess = mime_guess::from_path(&full_path);
         let mime = guess
             .first_raw()
@@ -174,6 +181,8 @@ enum Inner {
     Redirect(HeaderValue),
     NotFound,
     Invalid,
+    #[cfg(feature = "metadata")]
+    NotModified,
 }
 
 /// Response future of [`ServeDir`].
@@ -193,6 +202,13 @@ impl Future for ResponseFuture {
                 let mut res = Response::new(body);
                 res.headers_mut().insert(header::CONTENT_TYPE, mime);
 
+                #[cfg(feature = "metadata")]
+                if let Some(metadata) = file.metadata() {
+                    let modified = httpdate::HttpDate::from(metadata.modified()).to_string();
+                    let value = HeaderValue::from_str(&modified).expect("SystemTime format");
+                    res.headers_mut().insert(header::LAST_MODIFIED, value);
+                }
+
                 Poll::Ready(Ok(res))
             }
             Inner::Redirect(location) => {
@@ -207,6 +223,15 @@ impl Future for ResponseFuture {
             Inner::NotFound | Inner::Invalid => {
                 let res = Response::builder()
                     .status(StatusCode::NOT_FOUND)
+                    .body(empty_body())
+                    .unwrap();
+
+                Poll::Ready(Ok(res))
+            }
+            #[cfg(feature = "metadata")]
+            Inner::NotModified => {
+                let res = Response::builder()
+                    .status(StatusCode::NOT_MODIFIED)
                     .body(empty_body())
                     .unwrap();
 
@@ -249,11 +274,51 @@ mod tests {
 
         assert_eq!(res.status(), StatusCode::OK);
         assert_eq!(res.headers()["content-type"], "text/plain");
+        #[cfg(not(feature = "metadata"))]
+        {
+            assert!(!res.headers().contains_key("last-modified"));
+            assert!(!res.headers().contains_key("etag"));
+        }
+        #[cfg(feature = "metadata")]
+        {
+            assert!(res.headers().contains_key("last-modified"));
+            assert!(!res.headers().contains_key("etag"));
+        }
 
         let body = body_into_text(res.into_body()).await;
 
         let contents = std::fs::read_to_string("./tests/assets/text.txt").unwrap();
         assert_eq!(body, contents);
+    }
+
+    #[cfg(feature = "metadata")]
+    #[tokio::test]
+    async fn with_if_modified_since() {
+        let svc = ServeDir::new(&ASSETS_DIR);
+
+        let modified: httpdate::HttpDate = ASSETS_DIR
+            .get_file("text.txt")
+            .unwrap()
+            .metadata()
+            .unwrap()
+            .modified()
+            .into();
+
+        let req = Request::builder()
+            .uri("/text.txt")
+            .header(
+                header::IF_MODIFIED_SINCE,
+                HeaderValue::from_str(&modified.to_string()).unwrap(),
+            )
+            .body(http_body_util::Empty::<Bytes>::new())
+            .unwrap();
+        let res = svc.oneshot(req).await.unwrap();
+
+        assert_eq!(res.status(), StatusCode::NOT_MODIFIED);
+        assert!(!res.headers().contains_key("content-type"));
+        assert!(!res.headers().contains_key("last-modified"));
+        assert!(!res.headers().contains_key("etag"));
+        assert!(body_into_text(res.into_body()).await.is_empty());
     }
 
     #[tokio::test]

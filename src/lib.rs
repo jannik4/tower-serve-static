@@ -130,7 +130,10 @@ where
 }
 
 #[cfg(feature = "metadata")]
-fn unmodified_since_request_condition<T>(file: &include_dir::File, req: &http::Request<T>) -> bool {
+fn unmodified_since_request_condition<T>(
+    file: &include_dir::File<'_>,
+    req: &http::Request<T>,
+) -> bool {
     use http::{header, Method};
     use httpdate::HttpDate;
 

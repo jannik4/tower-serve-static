@@ -129,10 +129,11 @@ fn unmodified_since_request_condition<T>(file: &include_dir::File, req: &http::R
         return false;
     };
 
-    // When used in combination with If-None-Match, it is ignored, unless the server doesn't support If-None-Match.
-    if req.headers().contains_key(header::IF_NONE_MATCH) {
-        return false;
-    }
+    // If-Modified-Since header spec says:
+    //
+    // > When used in combination with If-None-Match, it is ignored, unless the server doesn't support If-None-Match.
+    //
+    // We can ignore the If-None-Match header is exists or not, because we currently do not support If-None-Match.
 
     // If-Modified-Since can only be used with a GET or HEAD.
     match req.method() {

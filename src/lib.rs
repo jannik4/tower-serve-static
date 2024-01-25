@@ -49,6 +49,8 @@
 //! - `metadata` - enables [`ServeDir`] to include the `Last-Modified` header in the response headers.
 //!   Additionally, it enables responding with a suitable reply for `If-Modified-Since` conditional requests.
 
+#![deny(rust_2018_idioms, missing_docs)]
+
 #[macro_use]
 mod macros;
 

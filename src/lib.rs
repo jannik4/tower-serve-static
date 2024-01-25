@@ -41,6 +41,13 @@
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! # };
 //! ```
+//!
+//! # Features
+//!
+//! This library exposes the following features that can be enabled:
+//!
+//! - `metadata` - enables [`ServeDir`] to include the `Last-Modified` header in the response headers.
+//!   Additionally, it enables responding with a suitable reply for `If-Modified-Since` conditional requests.
 
 #[macro_use]
 mod macros;
@@ -118,4 +125,37 @@ where
             None => None,
         })
     }
+}
+
+#[cfg(feature = "metadata")]
+fn unmodified_since_request_condition<T>(file: &include_dir::File, req: &http::Request<T>) -> bool {
+    use http::{header, Method};
+    use httpdate::HttpDate;
+
+    let Some(metadata) = file.metadata() else {
+        return false;
+    };
+
+    // If-Modified-Since header spec says:
+    //
+    // > When used in combination with If-None-Match, it is ignored, unless the server doesn't support If-None-Match.
+    //
+    // We can ignore the If-None-Match header is exists or not, because we currently do not support If-None-Match.
+
+    // If-Modified-Since can only be used with a GET or HEAD.
+    match req.method() {
+        &Method::GET | &Method::HEAD => (),
+        _ => return false,
+    }
+
+    let Some(since) = req
+        .headers()
+        .get(header::IF_MODIFIED_SINCE)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.parse::<HttpDate>().ok())
+    else {
+        return false;
+    };
+
+    metadata.modified() <= since.into()
 }

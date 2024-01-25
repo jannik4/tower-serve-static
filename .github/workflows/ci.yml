@@ -34,9 +34,10 @@ jobs:
 
       - name: Build
         run: cargo build --verbose
-      - name: Run tests
-        run: cargo test --verbose
-
+      - name: Run tests without default features
+        run: cargo test --verbose --no-default-features
+      - name: Run tests with metadata feature
+        run: cargo test --verbose --features metadata
   check_fmt:
     name: Check fmt
     runs-on: ubuntu-latest

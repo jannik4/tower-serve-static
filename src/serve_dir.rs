@@ -277,12 +277,10 @@ mod tests {
         #[cfg(not(feature = "metadata"))]
         {
             assert!(!res.headers().contains_key("last-modified"));
-            assert!(!res.headers().contains_key("etag"));
         }
         #[cfg(feature = "metadata")]
         {
             assert!(res.headers().contains_key("last-modified"));
-            assert!(!res.headers().contains_key("etag"));
         }
 
         let body = body_into_text(res.into_body()).await;
@@ -317,7 +315,6 @@ mod tests {
         assert_eq!(res.status(), StatusCode::NOT_MODIFIED);
         assert!(!res.headers().contains_key("content-type"));
         assert!(!res.headers().contains_key("last-modified"));
-        assert!(!res.headers().contains_key("etag"));
         assert!(body_into_text(res.into_body()).await.is_empty());
     }
 

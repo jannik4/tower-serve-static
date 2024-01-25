@@ -41,6 +41,13 @@
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! # };
 //! ```
+//!
+//! # Features
+//!
+//! This library exposes the following features can be enabled:
+//!
+//! - `metadata` - enables `ServeDir` to include the `Last-Modified` header in the response headers.
+//!   Additionally, it enables responding with a suitable reply for `If-Modified-Since` conditional requests.
 
 #[macro_use]
 mod macros;

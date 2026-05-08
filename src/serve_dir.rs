@@ -71,12 +71,6 @@ impl<ReqBody> Service<Request<ReqBody>> for ServeDir {
     }
 
     fn call(&mut self, req: Request<ReqBody>) -> Self::Future {
-        if req.uri().authority().is_some() && req.uri().scheme().is_none() {
-            return ResponseFuture {
-                inner: Some(Inner::Invalid),
-            };
-        }
-
         // build and validate the path
         let path = req.uri().path();
         let path = path.trim_start_matches('/');
@@ -101,9 +95,12 @@ impl<ReqBody> Service<Request<ReqBody>> for ServeDir {
 
         if !req.uri().path().ends_with('/') {
             if is_dir(self.dir, &full_path) {
-                let location =
-                    HeaderValue::from_str(&append_slash_on_path(req.uri().clone()).to_string())
-                        .unwrap();
+                let Ok(uri) = append_slash_on_path(req.uri().clone()) else {
+                    return ResponseFuture {
+                        inner: Some(Inner::Invalid),
+                    };
+                };
+                let location = HeaderValue::from_str(&uri.to_string()).unwrap();
                 return ResponseFuture {
                     inner: Some(Inner::Redirect(location)),
                 };
@@ -154,7 +151,7 @@ fn is_dir(dir: &Dir<'static>, path: &Path) -> bool {
     dir.get_dir(path).is_some()
 }
 
-fn append_slash_on_path(uri: Uri) -> Uri {
+fn append_slash_on_path(uri: Uri) -> http::Result<Uri> {
     let http::uri::Parts {
         scheme,
         authority,
@@ -165,9 +162,9 @@ fn append_slash_on_path(uri: Uri) -> Uri {
     let mut builder = Uri::builder();
     if let Some(scheme) = scheme {
         builder = builder.scheme(scheme);
-        if let Some(authority) = authority {
-            builder = builder.authority(authority);
-        }
+    }
+    if let Some(authority) = authority {
+        builder = builder.authority(authority);
     }
     if let Some(path_and_query) = path_and_query {
         if let Some(query) = path_and_query.query() {
@@ -179,7 +176,7 @@ fn append_slash_on_path(uri: Uri) -> Uri {
         builder = builder.path_and_query("/");
     }
 
-    builder.build().unwrap()
+    builder.build()
 }
 
 enum Inner {

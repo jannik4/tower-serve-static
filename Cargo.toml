@@ -9,7 +9,7 @@ homepage = "https://github.com/jannik4/tower-serve-static"
 
 [dependencies]
 bytes = "1"
-futures-util = { version = "0.3", default_features = false, features = [] }
+futures-util = { version = "0.3", default-features = false, features = [] }
 http = "1"
 http-body = "1"
 http-body-util = "0.1"
@@ -18,11 +18,11 @@ tower-service = "0.3"
 
 mime = "0.3"
 mime_guess = "2"
-tokio = { version = "1", default_features = false, features = ["fs"] }
-tokio-util = { version = "0.7", default_features = false, features = ["io"] }
+tokio = { version = "1", default-features = false, features = ["fs"] }
+tokio-util = { version = "0.7", default-features = false, features = ["io"] }
 percent-encoding = "2.1.0"
 
-include_dir = { version = "0.7.3", default_features = false, features = [] }
+include_dir = { version = "0.7.3", default-features = false, features = [] }
 httpdate = { version = "1", optional = true }
 
 [dev-dependencies]
